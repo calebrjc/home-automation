@@ -745,7 +745,7 @@ static void _jcfw_cli_putc(const jcfw_cli_t *cli, char c, bool flush)
 
 static void _jcfw_cli_puts(const jcfw_cli_t *cli, const char *s)
 {
-    JCFW_ASSERT_RET(cli);
+    JCFW_ASSERT_RET(cli && s);
 
     while (*s)
     {

@@ -19,3 +19,7 @@
 #define JCFW_CLI_SERIAL_TERM_TRANSLATE 1
 
 #endif // __JCFW_CONFIG_H__
+
+// TRACE -------------------------------------------------------------------------------------------
+
+#define JCFW_TRACE_MAX_TAG_LEN 8

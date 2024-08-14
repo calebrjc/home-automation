@@ -6,6 +6,8 @@
 #include "freertos/task.h"
 
 #include "jcfw/cli.h"
+#include "jcfw/platform/platform.h"
+#include "jcfw/trace.h"
 #include "jcfw/util/assert.h"
 #include "jcfw/util/math.h"
 
@@ -52,7 +54,7 @@ static int test2(jcfw_cli_t *cli, int argc, char **argv)
     return EXIT_SUCCESS;
 }
 
-jcfw_cli_cmd_spec_t s_cmds[] = {
+const jcfw_cli_cmd_spec_t s_cmds[] = {
     {
         .name        = "test",
         .usage       = "usage: test [ARGS...]",
@@ -93,7 +95,16 @@ static void app_putchar(void *data, char ch, bool flush);
 
 void app_main(void)
 {
+    if (jcfw_platform_init() != JCFW_RESULT_OK)
+    {
+        printf("ERROR!\n");
+        return;
+    }
+
+    JCFW_TRACE("MAIN", "Here we go!\n");
+
     jcfw_cli_init(&s_cli, "home-cli $ ", app_putchar, stdout);
+    JCFW_TRACEHEX("MAIN", &s_cli, sizeof(s_cli), "cli");
     jcfw_cli_print_prompt(&s_cli);
 
     while (1)

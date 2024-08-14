@@ -1,5 +1,6 @@
 set(JCFW_SRCS
     src/cli.c
+    src/trace.c
     src/util/checksum.c
     src/util/string.c)
 

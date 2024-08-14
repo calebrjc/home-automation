@@ -1,5 +1,6 @@
 set(SOURCES
-    main.c)
+    main.c
+    platform.c)
 
 idf_component_register(
     SRCS
