@@ -1,3 +1,4 @@
+#include <stdatomic.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -5,85 +6,88 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#include "driver/gpio.h"
+#include "driver/i2c_master.h"
+
 #include "jcfw/cli.h"
+#include "jcfw/driver/als/ltr303.h"
 #include "jcfw/platform/platform.h"
 #include "jcfw/trace.h"
 #include "jcfw/util/assert.h"
 #include "jcfw/util/math.h"
 
+#include "platform.h"
+
+// -------------------------------------------------------------------------------------------------
+
 static jcfw_cli_t s_cli = {0};
 
 // -------------------------------------------------------------------------------------------------
 
-static int test(jcfw_cli_t *cli, int argc, char **argv)
-{
-    jcfw_cli_printf(cli, "It works!\n");
+void hw_init(void);
 
-    jcfw_cli_printf(cli, "\n%d args:\n", argc);
-    for (int i = 0; i < argc; i++)
+void i2c_mem_read(
+    void          *arg,
+    const uint8_t *mem_addr,
+    size_t         mem_addr_size,
+    uint8_t       *o_data,
+    size_t         data_size,
+    uint32_t       timeout_ms);
+
+void i2c_mem_write(
+    void          *arg,
+    const uint8_t *mem_addr,
+    size_t         mem_addr_size,
+    const uint8_t *data,
+    size_t         data_size,
+    uint32_t       timeout_ms);
+
+void on_als_data_ready(void *arg);
+
+// -------------------------------------------------------------------------------------------------
+
+static int als(jcfw_cli_t *cli, int argc, char **argv)
+{
+    if (argc != 2)
     {
-        jcfw_cli_printf(cli, "Arg %d/%d: '%s'\n", i + 1, argc, argv[i]);
+        jcfw_cli_printf(cli, "usage: als <on|off>\n");
+        return EXIT_FAILURE;
     }
 
-    if (argc > 1 && strcmp(argv[1], "bad") == 0)
+    jcfw_result_e err = JCFW_RESULT_ERROR;
+
+    if (strncmp(argv[1], "on", 2) == 0)
     {
+        err = jcfw_ltr303_set_mode(&g_ltr303, JCFW_LTR303_MODE_ACTIVE);
+        if (err != JCFW_RESULT_OK)
+        {
+            jcfw_cli_printf(cli, "error: Unable to put the ALS in active mode\n");
+            return EXIT_FAILURE;
+        }
+    }
+    else if (strncmp(argv[1], "off", 3) == 0)
+    {
+        err = jcfw_ltr303_set_mode(&g_ltr303, JCFW_LTR303_MODE_STANDBY);
+        if (err != JCFW_RESULT_OK)
+        {
+            jcfw_cli_printf(cli, "error: Unable to put the ALS in standby mode\n");
+            return EXIT_FAILURE;
+        }
+    }
+    else
+    {
+        jcfw_cli_printf(cli, "usage: als <on|off>\n");
         return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;
 }
 
-static int subtest(jcfw_cli_t *cli, int argc, char **argv)
-{
-    jcfw_cli_printf(cli, "Subcommand!\n");
-
-    return EXIT_SUCCESS;
-}
-
-static int subsubtest(jcfw_cli_t *cli, int argc, char **argv)
-{
-    jcfw_cli_printf(cli, "Subsubcommand!\n");
-
-    return EXIT_SUCCESS;
-}
-
-static int test2(jcfw_cli_t *cli, int argc, char **argv)
-{
-    jcfw_cli_printf(cli, "It works2!\n");
-
-    return EXIT_SUCCESS;
-}
-
 const jcfw_cli_cmd_spec_t s_cmds[] = {
     {
-        .name        = "test",
-        .usage       = "usage: test [ARGS...]",
-        .handler     = test,
-        .num_subcmds = 1,
-        .subcmds =
-            (jcfw_cli_cmd_spec_t[]) {
-                {
-                    .name        = "subtest",
-                    .usage       = "usage: subtest [ARGS...]",
-                    .handler     = subtest,
-                    .num_subcmds = 1,
-                    .subcmds =
-                        (jcfw_cli_cmd_spec_t[]) {
-                            {
-                                .name        = "subsubtest",
-                                .usage       = "usage: subsubtest [ARGS...]",
-                                .handler     = subsubtest,
-                                .num_subcmds = 0,
-                                .subcmds     = NULL,
-                            },
-                        },
-                },
-            },
-    },
-    {
-        .name        = "test2",
-        .usage       = "usage: test2 [ARGS...]",
-        .handler     = test2,
+        .name        = "als",
+        .usage       = "usage: als <on|off>",
+        .handler     = als,
         .num_subcmds = 0,
         .subcmds     = NULL,
     },
@@ -102,21 +106,22 @@ void app_main(void)
     }
 
     JCFW_TRACE("MAIN", "Here we go!\n");
+    hw_init();
 
-    jcfw_cli_init(&s_cli, "home-cli $ ", app_putchar, stdout);
-    JCFW_TRACEHEX("MAIN", &s_cli, sizeof(s_cli), "cli");
+    jcfw_cli_init(&s_cli, "home-cli $ ", app_putchar, NULL);
+    // JCFW_TRACEHEX("MAIN", &s_cli, sizeof(s_cli), "cli");
     jcfw_cli_print_prompt(&s_cli);
 
     while (1)
     {
-        char c = getchar();
+        char c = getchar(); // NOTE(Caleb): Nonblocking, returns 0xFF if no input is received
 
         if (c != (char)EOF && jcfw_cli_process_char(&s_cli, c))
         {
             int exit_status = -1;
 
-            jcfw_cli_cmd_dispatch_result_e result =
-                jcfw_cli_dispatch_command(&s_cli, s_cmds, JCFW_ARRAYSIZE(s_cmds), &exit_status);
+            jcfw_cli_dispatch_result_e result =
+                jcfw_cli_dispatch(&s_cli, s_cmds, JCFW_ARRAYSIZE(s_cmds), &exit_status);
 
             switch (result)
             {
@@ -149,20 +154,44 @@ void app_main(void)
             jcfw_cli_print_prompt(&s_cli);
         }
 
+        if (g_is_als_data_ready)
+        {
+            uint16_t      ch0 = 0x0000;
+            uint16_t      ch1 = 0x0000;
+            jcfw_result_e err = jcfw_ltr303_read(&g_ltr303, &ch0, &ch1);
+            JCFW_ASSERT(err == JCFW_RESULT_OK, "Unable to read ALS data");
+
+            printf("ALS DATA: %d lux\n", JCFW_CLAMP(ch0 - ch1, 0x0000, 0xFFFF));
+            g_is_als_data_ready = false;
+        }
+
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 }
 
 static void app_putchar(void *data, char c, bool flush)
 {
-    JCFW_ASSERT_RET(data);
+    (void)data;
+    jcfw_platform_trace_putc(c, flush);
+}
 
-    FILE *f = data;
+// -------------------------------------------------------------------------------------------------
 
-    fputc(c, f);
+void hw_init(void)
+{
+    // I2C Light Sensor --------------------------------------------------------
 
-    if (flush)
-    {
-        fflush(f);
-    }
+    jcfw_result_e err;
+
+    uint16_t thresh_low  = 0x0000;
+    uint16_t thresh_high = 0x0000;
+    err                  = jcfw_ltr303_set_thresholds(&g_ltr303, &thresh_low, &thresh_high);
+    JCFW_ASSERT(err == JCFW_RESULT_OK, "Unable to set thresholds");
+
+    err = jcfw_ltr303_enable_interrupt(&g_ltr303, true);
+    JCFW_ASSERT(err == JCFW_RESULT_OK, "Unable to enable interrupts");
+
+    // err = jcfw_ltr303_set_mode(&g_ltr303, JCFW_LTR303_MODE_ACTIVE);
+    // JCFW_ASSERT(err == JCFW_RESULT_OK, "Unable to enable ALS");
+    // vTaskDelay(10 / portTICK_PERIOD_MS); // NOTE(Caleb): See datasheet
 }

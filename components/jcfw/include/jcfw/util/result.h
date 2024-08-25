@@ -22,4 +22,6 @@ typedef enum
     JCFW_RESULT_OUT_OF_BOUNDS,
 } jcfw_result_e;
 
+// TODO(Caleb): Result check macro
+
 #endif // __JCFW_UTIL_RESULT_H__

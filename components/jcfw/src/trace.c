@@ -66,13 +66,19 @@ void _jcfw_traceln_impl(const char *tag, const char *file, int line, const char 
     _jcfw_trace_printf("%s\n", buffer);
 }
 
-void JCFW_TRACEHEX(const char *tag, const void *data, size_t size, const char *prefix)
+void _jcfw_tracehex_impl(
+    const char *tag, const char *file, int line, const void *data, size_t size, const char *prefix)
 {
     JCFW_ASSERT_RET(tag && data && size);
 
     for (size_t i = 0; i < size; i += 16)
     {
         _jcfw_trace_printf("[%-*s] ", JCFW_TRACE_MAX_TAG_LEN, tag);
+
+        if (file)
+        {
+            _jcfw_trace_printf("%s:%d - ", file, line);
+        }
 
         if (prefix)
         {

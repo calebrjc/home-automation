@@ -1,13 +1,12 @@
 #ifndef __JCFW_UTIL_ASSERT_H__
 #define __JCFW_UTIL_ASSERT_H__
 
-#include "jcfw/platform/detail/compiler.h"
-// #include "jcfw/hooks.h"
+#include "jcfw/platform/compiler.h"
+#include "jcfw/platform/platform.h"
 
 /// @brief Assert that a condition is true, and call a user-defined assert handler if it isn't. This
 /// is an application-level convenience macro which should only be used in application code, and
-/// requires the application developer to implement the `jcfw_hook_on_assert` hook declared in
-/// `jcfw/hooks.h`.
+/// requires the application developer to implement the `jcfw_platform_on_assert` hook.
 /// @param _cond The condition to assert.
 /// @param _msg_fmt The format of the message to log.
 /// @param __VA_ARGS__ Arguments for the log message.
@@ -16,7 +15,7 @@
     {                                                                                              \
         if (JCFW_UNLIKELY(!(_cond)))                                                               \
         {                                                                                          \
-            jcfw_hook_on_assert(__FILE__, __LINE__, (_msg_fmt), ##__VA_ARGS__);                    \
+            jcfw_platform_on_assert(__FILE__, __LINE__, (_msg_fmt), ##__VA_ARGS__);                \
         }                                                                                          \
     } while (0)
 

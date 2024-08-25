@@ -39,7 +39,7 @@ typedef enum
 
     /// @brief The input was empty.
     JCFW_CLI_CMD_DISPATCH_RESULT_NO_CMD,
-} jcfw_cli_cmd_dispatch_result_e;
+} jcfw_cli_dispatch_result_e;
 
 /// @brief This is the structure which represents the context of a CLI. It should not be accessed
 /// directly by application code.
@@ -124,9 +124,9 @@ int jcfw_cli_parse_args(jcfw_cli_t *cli, char ***o_argv);
 /// @param cmds The commands to search for the invocation in.
 /// @param num_cmds The number of top level commands provided.
 /// @param o_exit_status Required; The result of the command, if executed.
-/// @return A member of `jcfw_cli_cmd_dispatch_result_e` (see the enum for details).
-jcfw_cli_cmd_dispatch_result_e jcfw_cli_dispatch_command(
-    jcfw_cli_t *cli, jcfw_cli_cmd_spec_t *cmds, size_t num_cmds, int *o_exit_status);
+/// @return A member of `jcfw_cli_dispatch_result_e` (see the enum for details).
+jcfw_cli_dispatch_result_e jcfw_cli_dispatch(
+    jcfw_cli_t *cli, const jcfw_cli_cmd_spec_t *cmds, size_t num_cmds, int *o_exit_status);
 
 /// @brief Output the prompt using the `putc_func` used to initialize the CLI. This function should
 /// be called after the CLI has been initialized and is ready to receive commands, and after the
