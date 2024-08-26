@@ -4,6 +4,9 @@
 #include "jcfw/detail/common.h"
 #include "jcfw/util/result.h"
 
+// ...
+typedef void (*jcfw_platform_putchar_f)(void *arg, char c, bool flush);
+
 /// @brief Initalize the platform layer. Manual hardware initalization to do with the platform layer
 /// should be done here. This function should be called once from the main function.
 /// @return JCFW_RESULT_OK if initialization is successful, or an error code otherwise.
@@ -21,12 +24,6 @@ void jcfw_platform_on_assert(const char *file, int line, const char *format, ...
 /// @param tag The tag to evaluate.
 /// @return True if a trace with the tag should be output, and false otherwise.
 bool jcfw_platform_trace_validate(const char *tag);
-
-/// @brief Write a character to the trace output stream.
-/// @param c The character to write.
-/// @param flush True if a theoretical "buffer" should be "flushed" after writing the character.
-/// Useful if the implementation takes advantage of buffering.
-void jcfw_platform_trace_putc(char c, bool flush);
 
 void jcfw_platform_delay_ms(uint32_t delay_ms);
 

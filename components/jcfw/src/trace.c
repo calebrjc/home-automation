@@ -9,8 +9,17 @@
 
 // TODO(Caleb): Do I need to lock this module?
 
+static jcfw_platform_putchar_f s_putchar     = NULL;
+static void                   *s_putchar_arg = NULL;
+
 static void _jcfw_trace_puts(const char *s);
 static void _jcfw_trace_printf(const char *format, ...);
+
+void jcfw_trace_init(jcfw_platform_putchar_f putchar_func, void *putchar_arg)
+{
+    s_putchar     = putchar_func;
+    s_putchar_arg = putchar_arg;
+}
 
 void _jcfw_trace_impl(const char *tag, const char *file, int line, const char *format, ...)
 {
@@ -23,7 +32,7 @@ void _jcfw_trace_impl(const char *tag, const char *file, int line, const char *f
 
     if (file)
     {
-        _jcfw_trace_printf("%s:%d - ", file, line);
+        _jcfw_trace_printf("%s:%d - ", basename(file), line);
     }
 
     va_list args;
@@ -118,11 +127,11 @@ void _jcfw_tracehex_impl(
 
 static void _jcfw_trace_puts(const char *s)
 {
-    JCFW_ASSERT_RET(s);
+    JCFW_ASSERT_RET(s && s_putchar);
 
     while (*s)
     {
-        jcfw_platform_trace_putc(*s, s[1] == '\0');
+        s_putchar(s_putchar_arg, *s, s[1] == '\0');
         s++;
     }
 }

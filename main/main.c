@@ -1,48 +1,19 @@
-#include <stdatomic.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
+#include "driver/uart.h"
 
 #include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-
-#include "driver/gpio.h"
-#include "driver/i2c_master.h"
 
 #include "jcfw/cli.h"
 #include "jcfw/driver/als/ltr303.h"
-#include "jcfw/platform/platform.h"
 #include "jcfw/trace.h"
 #include "jcfw/util/assert.h"
 #include "jcfw/util/math.h"
 
 #include "platform.h"
+#include "util.h"
 
 // -------------------------------------------------------------------------------------------------
 
 static jcfw_cli_t s_cli = {0};
-
-// -------------------------------------------------------------------------------------------------
-
-void hw_init(void);
-
-void i2c_mem_read(
-    void          *arg,
-    const uint8_t *mem_addr,
-    size_t         mem_addr_size,
-    uint8_t       *o_data,
-    size_t         data_size,
-    uint32_t       timeout_ms);
-
-void i2c_mem_write(
-    void          *arg,
-    const uint8_t *mem_addr,
-    size_t         mem_addr_size,
-    const uint8_t *data,
-    size_t         data_size,
-    uint32_t       timeout_ms);
-
-void on_als_data_ready(void *arg);
 
 // -------------------------------------------------------------------------------------------------
 
@@ -95,21 +66,17 @@ const jcfw_cli_cmd_spec_t s_cmds[] = {
 
 // -------------------------------------------------------------------------------------------------
 
-static void app_putchar(void *data, char ch, bool flush);
-
 void app_main(void)
 {
-    if (jcfw_platform_init() != JCFW_RESULT_OK)
-    {
-        printf("ERROR!\n");
-        return;
-    }
+    uart_event_t uart_event;
 
-    JCFW_TRACE("MAIN", "Here we go!\n");
-    hw_init();
+    JCFW_ASSERT(
+        jcfw_platform_init() == JCFW_RESULT_OK, "error: Unable to execute platform initialization");
 
-    jcfw_cli_init(&s_cli, "home-cli $ ", app_putchar, NULL);
-    // JCFW_TRACEHEX("MAIN", &s_cli, sizeof(s_cli), "cli");
+    jcfw_trace_init(util_putchar, NULL);
+
+    JCFW_TRACE("MAIN", "Hello world!\n");
+    jcfw_cli_init(&s_cli, "home-cli $ ", util_putchar, NULL);
     jcfw_cli_print_prompt(&s_cli);
 
     while (1)
@@ -161,37 +128,10 @@ void app_main(void)
             jcfw_result_e err = jcfw_ltr303_read(&g_ltr303, &ch0, &ch1);
             JCFW_ASSERT(err == JCFW_RESULT_OK, "Unable to read ALS data");
 
-            printf("ALS DATA: %d lux\n", JCFW_CLAMP(ch0 - ch1, 0x0000, 0xFFFF));
+            JCFW_TRACE("MAIN", "ALS DATA: %d lux\n", JCFW_CLAMP(ch0 - ch1, 0x0000, 0xFFFF));
             g_is_als_data_ready = false;
         }
 
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
-}
-
-static void app_putchar(void *data, char c, bool flush)
-{
-    (void)data;
-    jcfw_platform_trace_putc(c, flush);
-}
-
-// -------------------------------------------------------------------------------------------------
-
-void hw_init(void)
-{
-    // I2C Light Sensor --------------------------------------------------------
-
-    jcfw_result_e err;
-
-    uint16_t thresh_low  = 0x0000;
-    uint16_t thresh_high = 0x0000;
-    err                  = jcfw_ltr303_set_thresholds(&g_ltr303, &thresh_low, &thresh_high);
-    JCFW_ASSERT(err == JCFW_RESULT_OK, "Unable to set thresholds");
-
-    err = jcfw_ltr303_enable_interrupt(&g_ltr303, true);
-    JCFW_ASSERT(err == JCFW_RESULT_OK, "Unable to enable interrupts");
-
-    // err = jcfw_ltr303_set_mode(&g_ltr303, JCFW_LTR303_MODE_ACTIVE);
-    // JCFW_ASSERT(err == JCFW_RESULT_OK, "Unable to enable ALS");
-    // vTaskDelay(10 / portTICK_PERIOD_MS); // NOTE(Caleb): See datasheet
 }

@@ -729,18 +729,15 @@ static void _jcfw_cli_search_mode_stop(jcfw_cli_t *cli, bool print)
 
 static void _jcfw_cli_putc(const jcfw_cli_t *cli, char c, bool flush)
 {
-    JCFW_ASSERT_RET(cli);
+    JCFW_ASSERT_RET(cli && cli->putc);
 
-    if (cli->putc)
-    {
 #if JCFW_CLI_SERIAL_TERM_TRANSLATE
-        if (c == '\n')
-        {
-            cli->putc(cli->putc_param, '\r', false);
-        }
-#endif
-        cli->putc(cli->putc_param, c, flush);
+    if (c == '\n')
+    {
+        cli->putc(cli->putc_param, '\r', false);
     }
+#endif
+    cli->putc(cli->putc_param, c, flush);
 }
 
 static void _jcfw_cli_puts(const jcfw_cli_t *cli, const char *s)

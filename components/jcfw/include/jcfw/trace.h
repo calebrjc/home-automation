@@ -3,6 +3,8 @@
 
 #include <stddef.h>
 
+#include "jcfw/platform/platform.h"
+
 // TODO(Caleb): Make this work also with string variables
 
 // ...
@@ -13,6 +15,8 @@
 
 #define JCFW_TRACEHEX(_tag, _data, _size, _prefix)                                                 \
     _jcfw_tracehex_impl(_tag, __FILE__, __LINE__, _data, _size, _prefix)
+
+void jcfw_trace_init(jcfw_platform_putchar_f putchar_func, void *putchar_arg);
 
 void _jcfw_trace_impl(const char *tag, const char *file, int line, const char *format, ...);
 void _jcfw_traceln_impl(const char *tag, const char *file, int line, const char *format, ...);
