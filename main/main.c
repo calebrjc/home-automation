@@ -19,9 +19,12 @@ static jcfw_cli_t s_cli = {0};
 
 static int als(jcfw_cli_t *cli, int argc, char **argv)
 {
+    const char *USAGE_MESSAGE        = "usage: als <on|off>\n";
+    const char *ERROR_MESSAGE_FORMAT = "error: Unable to put the ALS in %s mode\n";
+
     if (argc != 2)
     {
-        jcfw_cli_printf(cli, "usage: als <on|off>\n");
+        jcfw_cli_printf(cli, USAGE_MESSAGE);
         return EXIT_FAILURE;
     }
 
@@ -32,7 +35,7 @@ static int als(jcfw_cli_t *cli, int argc, char **argv)
         err = jcfw_ltr303_set_mode(&g_ltr303, JCFW_LTR303_MODE_ACTIVE);
         if (err != JCFW_RESULT_OK)
         {
-            jcfw_cli_printf(cli, "error: Unable to put the ALS in active mode\n");
+            jcfw_cli_printf(cli, ERROR_MESSAGE_FORMAT, "ACTIVE");
             return EXIT_FAILURE;
         }
     }
@@ -41,13 +44,13 @@ static int als(jcfw_cli_t *cli, int argc, char **argv)
         err = jcfw_ltr303_set_mode(&g_ltr303, JCFW_LTR303_MODE_STANDBY);
         if (err != JCFW_RESULT_OK)
         {
-            jcfw_cli_printf(cli, "error: Unable to put the ALS in standby mode\n");
+            jcfw_cli_printf(cli, ERROR_MESSAGE_FORMAT, "STANDBY");
             return EXIT_FAILURE;
         }
     }
     else
     {
-        jcfw_cli_printf(cli, "usage: als <on|off>\n");
+        jcfw_cli_printf(cli, USAGE_MESSAGE);
         return EXIT_FAILURE;
     }
 

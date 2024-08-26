@@ -80,6 +80,10 @@ jcfw_result_e jcfw_platform_init(void)
 
     // CLI UART ----------------------------------------------------------------
 
+    // TODO(Caleb):
+    // For some reason this configuration causes the first TX'ed byte to not show up on the serial
+    // monitor. Not sure why.
+
     // memset(&uart_cfg, 0, sizeof(uart_cfg));
     // uart_cfg.baud_rate  = 115200;
     // uart_cfg.data_bits  = UART_DATA_8_BITS;
