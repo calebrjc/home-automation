@@ -58,7 +58,7 @@ static const jcfw_cli_cmd_spec_t *_jcfw_cli_find_cmd(
 jcfw_result_e
 jcfw_cli_init(jcfw_cli_t *cli, const char *prompt, jcfw_cli_putc_f putc_func, void *putc_param)
 {
-    JCFW_ASSERT_RET(cli && prompt && putc_func, JCFW_RESULT_INVALID_ARG);
+    JCFW_ASSERT_RET(cli && prompt && putc_func, JCFW_RESULT_INVALID_ARGS);
 
     memset(cli, 0, sizeof(*cli));
     cli->putc       = putc_func;
@@ -493,7 +493,7 @@ jcfw_cli_dispatch_result_e jcfw_cli_dispatch(
 
     for (size_t i = cmd_depth; i < argc; i++)
     {
-        if (strcmp(argv[i], "--help") == 0)
+        if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0)
         {
             if (cmd->usage)
             {

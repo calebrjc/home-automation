@@ -6,6 +6,8 @@
 #include "jcfw/util/bit.h"
 #include "jcfw/util/result.h"
 
+#define JCFW_LTR303_INTR_PERSIST_DEFAULT 0x00
+
 typedef struct
 {
     void    *i2c_arg;
@@ -59,10 +61,16 @@ typedef enum
     JCFW_LTR303_MEAS_RATE_2000MS  = 0x05,
 } jcfw_ltr303_measurement_rate_e;
 
-#define JCFW_LTR303_INTR_PERSIST_DEFAULT 0x00
-
+/// @brief Initialize the LTR303 driver.
+/// @param dev A pointer to the structure to initialize.
+/// @param i2c_arg Optional; The argument to be used by the I2C platform function for this device.
+/// @param i2c_timeout_ms The timeout to be used for I2C operations.
+/// @return JCFW_RESULT_OK if initialization is successful, or an error code otherwise.
 jcfw_result_e jcfw_ltr303_init(jcfw_ltr303_t *dev, void *i2c_arg, uint32_t i2c_timeout_ms);
 
+/// @brief Perform a soft reset on the LTR303.
+/// @param dev The device to perform the soft reset on.
+/// @return JCFW_RESULT_OK if the soft reset is successful, or an error code otherwise.
 jcfw_result_e jcfw_ltr303_reset(jcfw_ltr303_t *dev);
 
 jcfw_result_e jcfw_ltr303_set_mode(jcfw_ltr303_t *dev, jcfw_ltr303_mode_e mode);
