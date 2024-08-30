@@ -71,15 +71,23 @@ const jcfw_cli_cmd_spec_t s_cmds[] = {
 
 void app_main(void)
 {
-    uart_event_t uart_event;
+    // uart_event_t uart_event;
 
     JCFW_ASSERT(
         jcfw_platform_init() == JCFW_RESULT_OK, "error: Unable to execute platform initialization");
 
     jcfw_trace_init(util_putchar, NULL);
 
-    JCFW_TRACE("MAIN", "Hello world!\n");
+    JCFW_TRACELN_ERROR("MAIN", "Here's an error message!");
+    JCFW_TRACELN_WARN("MAIN", "Here's an warning message!");
+    JCFW_TRACELN("MAIN", "Here's an info message!");
+    JCFW_TRACELN_DEBUG("MAIN", "Here's a debug message!");
+    JCFW_TRACELN_NOTIFICATION("MAIN", "Here's a notification message!");
+
     jcfw_cli_init(&s_cli, "home-cli $ ", util_putchar, NULL);
+    // JCFW_TRACELN_NOTIFICATION("MAIN", "CLI initialized!");
+    // JCFW_TRACEHEX_NOTIFICATION("MAIN", &s_cli, sizeof(s_cli), "CLI Contents");
+
     jcfw_cli_print_prompt(&s_cli);
 
     while (1)
