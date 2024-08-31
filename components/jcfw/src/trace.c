@@ -142,7 +142,7 @@ static void _jcfw_trace_puts(const char *s)
 static void _jcfw_trace_printf(const char *format, ...)
 {
     JCFW_RETURN_IF_FALSE(format);
-
+  
     va_list args;
     va_start(args, format);
 

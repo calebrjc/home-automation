@@ -523,6 +523,7 @@ jcfw_cli_dispatch_result_e jcfw_cli_dispatch(
     const jcfw_cli_cmd_spec_t *cmd = _jcfw_cli_find_cmd(cmds, num_cmds, argc, argv, &cmd_depth);
     JCFW_RETURN_IF_FALSE(cmd && cmd->handler, JCFW_CLI_CMD_DISPATCH_RESULT_CMD_NOT_FOUND);
 
+
     for (size_t i = cmd_depth; i < argc; i++)
     {
         if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0)

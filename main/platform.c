@@ -68,6 +68,7 @@ jcfw_result_e jcfw_platform_init(void)
 
     jcfw_platform_delay_ms(100); // NOTE(Caleb): See LTR303 docs
     jcfw_err = jcfw_ltr303_init(&g_ltr303, s_als_i2c_handle, -1);
+
     JCFW_ERROR_IF_FALSE(
         jcfw_err == JCFW_RESULT_OK,
         JCFW_RESULT_ERROR,
