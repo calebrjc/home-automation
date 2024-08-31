@@ -1,6 +1,11 @@
 #ifndef __JCFW_CONFIG_H__
 #define __JCFW_CONFIG_H__
 
+// ASSERT ------------------------------------------------------------------------------------------
+
+#define JCFW_DEBUG
+// #define JCFW_RELEASE
+
 // CLI ---------------------------------------------------------------------------------------------
 
 /// @brief The maximum length for one command.

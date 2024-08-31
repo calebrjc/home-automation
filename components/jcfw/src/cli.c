@@ -50,22 +50,55 @@ static void _jcfw_cli_search_mode_stop(jcfw_cli_t *cli, bool print);
 static void _jcfw_cli_putc(const jcfw_cli_t *cli, char c, bool flush);
 static void _jcfw_cli_puts(const jcfw_cli_t *cli, const char *s);
 
+#define _jcfw_cli_internal_putc(_cli, _c, _flush)                                                  \
+    do                                                                                             \
+    {                                                                                              \
+        if (_cli->echo)                                                                            \
+        {                                                                                          \
+            _jcfw_cli_putc(_cli, _c, _flush);                                                      \
+        }                                                                                          \
+    } while (0)
+
+#define _jcfw_cli_internal_puts(_cli, _s)                                                          \
+    do                                                                                             \
+    {                                                                                              \
+        if (_cli->echo)                                                                            \
+        {                                                                                          \
+            _jcfw_cli_puts(_cli, _s);                                                              \
+        }                                                                                          \
+    } while (0)
+
+#define _jcfw_cli_internal_printf(_cli, ...)                                                       \
+    do                                                                                             \
+    {                                                                                              \
+        if (_cli->echo)                                                                            \
+        {                                                                                          \
+            jcfw_cli_printf(_cli, ##__VA_ARGS__);                                                  \
+        }                                                                                          \
+    } while (0)
+
 static const jcfw_cli_cmd_spec_t *_jcfw_cli_find_cmd(
     const jcfw_cli_cmd_spec_t *cmds, size_t num_cmds, int argc, char **argv, size_t *o_depth);
 
 // -------------------------------------------------------------------------------------------------
 
-jcfw_result_e
-jcfw_cli_init(jcfw_cli_t *cli, const char *prompt, jcfw_cli_putc_f putc_func, void *putc_param)
+jcfw_result_e jcfw_cli_init(
+    jcfw_cli_t *cli, const char *prompt, jcfw_cli_putc_f putc_func, void *putc_param, bool echo)
 {
-    JCFW_ASSERT_RET(cli && prompt && putc_func, JCFW_RESULT_INVALID_ARGS);
+    JCFW_ERROR_IF_FALSE(cli, JCFW_RESULT_INVALID_ARGS, "No CLI provided");
+    JCFW_ERROR_IF_FALSE(putc_func, JCFW_RESULT_INVALID_ARGS, "No output function provided");
 
     memset(cli, 0, sizeof(*cli));
     cli->putc       = putc_func;
     cli->putc_param = putc_param;
 
-    strncpy(cli->prompt, prompt, sizeof(cli->prompt));
-    cli->prompt[sizeof(cli->prompt) - 1] = '\0';
+    if (prompt)
+    {
+        strncpy(cli->prompt, prompt, sizeof(cli->prompt));
+        cli->prompt[sizeof(cli->prompt) - 1] = '\0';
+    }
+
+    cli->echo = echo;
 
     _jcfw_cli_reset(cli);
 
@@ -74,7 +107,7 @@ jcfw_cli_init(jcfw_cli_t *cli, const char *prompt, jcfw_cli_putc_f putc_func, vo
 
 bool jcfw_cli_process_char(jcfw_cli_t *cli, char c)
 {
-    JCFW_ASSERT_RET(cli, false);
+    JCFW_ERROR_IF_FALSE(cli, JCFW_RESULT_INVALID_ARGS, "No CLI provided");
 
     if (cli->flags & JCFW_CLI_FLAGS_CMD_READY)
     {
@@ -112,7 +145,8 @@ bool jcfw_cli_process_char(jcfw_cli_t *cli, char c)
                         cli->buffer_ptr = len;
                         cli->cursor_pos = len;
 
-                        jcfw_cli_printf(cli, "%s%s", cli->buffer, JCFW_CLI_ANSI_CLEAR_TO_EOL);
+                        _jcfw_cli_internal_printf(
+                            cli, "%s%s", cli->buffer, JCFW_CLI_ANSI_CLEAR_TO_EOL);
                     }
                     else
                     {
@@ -120,7 +154,7 @@ bool jcfw_cli_process_char(jcfw_cli_t *cli, char c)
                         _jcfw_cli_reset(cli);
                         cli->history_idx = cached_history_idx;
 
-                        _jcfw_cli_puts(cli, JCFW_CLI_ANSI_CLEAR_TO_EOL);
+                        _jcfw_cli_internal_puts(cli, JCFW_CLI_ANSI_CLEAR_TO_EOL);
                     }
 #endif
                     break;
@@ -142,14 +176,15 @@ bool jcfw_cli_process_char(jcfw_cli_t *cli, char c)
                         cli->buffer_ptr = len;
                         cli->cursor_pos = len;
 
-                        jcfw_cli_printf(cli, "%s%s", cli->buffer, JCFW_CLI_ANSI_CLEAR_TO_EOL);
+                        _jcfw_cli_internal_printf(
+                            cli, "%s%s", cli->buffer, JCFW_CLI_ANSI_CLEAR_TO_EOL);
                     }
                     else
                     {
                         // NOTE(Caleb): In-progress commands cannot be shown since history
                         // overwrites the working buffer. Ergo, we just clear the line.
                         _jcfw_cli_reset(cli);
-                        _jcfw_cli_puts(cli, JCFW_CLI_ANSI_CLEAR_TO_EOL);
+                        _jcfw_cli_internal_puts(cli, JCFW_CLI_ANSI_CLEAR_TO_EOL);
                     }
 #endif
                     break;
@@ -194,7 +229,7 @@ bool jcfw_cli_process_char(jcfw_cli_t *cli, char c)
                             cli->buffer_ptr - cli->cursor_pos);
                         cli->buffer_ptr--;
 
-                        jcfw_cli_printf(cli, "%s ", &cli->buffer[cli->cursor_pos]);
+                        _jcfw_cli_internal_printf(cli, "%s ", &cli->buffer[cli->cursor_pos]);
                         _jcfw_cli_term_cursor_back(cli, cli->buffer_ptr - cli->cursor_pos + 1);
                     }
 
@@ -230,7 +265,7 @@ bool jcfw_cli_process_char(jcfw_cli_t *cli, char c)
 
             case '\x03': // Ctrl-C - Cancel current input
                 _jcfw_cli_reset(cli);
-                jcfw_cli_printf(cli, "^C\n%s", cli->prompt);
+                _jcfw_cli_internal_printf(cli, "^C\n%s", cli->prompt);
 
                 break;
 
@@ -238,12 +273,12 @@ bool jcfw_cli_process_char(jcfw_cli_t *cli, char c)
                 cli->buffer[cli->cursor_pos] = '\0';
                 cli->buffer_ptr              = cli->cursor_pos;
 
-                _jcfw_cli_puts(cli, JCFW_CLI_ANSI_CLEAR_TO_EOL);
+                _jcfw_cli_internal_puts(cli, JCFW_CLI_ANSI_CLEAR_TO_EOL);
 
                 break;
 
             case '\x0c': // Ctrl-L
-                jcfw_cli_printf(
+                _jcfw_cli_internal_printf(
                     cli,
                     "%s%s%s%s",
                     JCFW_CLI_ANSI_MOVE_TO_BOL,
@@ -273,7 +308,7 @@ bool jcfw_cli_process_char(jcfw_cli_t *cli, char c)
                     cli->buffer_ptr--;
 
                     _jcfw_cli_term_cursor_back(cli, 1);
-                    jcfw_cli_printf(cli, "%s ", &cli->buffer[cli->cursor_pos]);
+                    _jcfw_cli_internal_printf(cli, "%s ", &cli->buffer[cli->cursor_pos]);
                     _jcfw_cli_term_cursor_back(cli, cli->buffer_ptr - cli->cursor_pos + 1);
                 }
 
@@ -350,24 +385,17 @@ bool jcfw_cli_process_char(jcfw_cli_t *cli, char c)
 
 const char *jcfw_cli_getline(jcfw_cli_t *cli)
 {
-    JCFW_ASSERT_RET(cli, NULL);
-
-    if ((cli->flags & JCFW_CLI_FLAGS_CMD_READY) == 0)
-    {
-        return NULL;
-    }
+    JCFW_ERROR_IF_FALSE(cli, NULL, "No CLI provided");
+    JCFW_RETURN_IF_FALSE(cli->flags & JCFW_CLI_FLAGS_CMD_READY, NULL);
 
     return cli->buffer;
 }
 
 int jcfw_cli_parse_args(jcfw_cli_t *cli, char ***argv)
 {
-    JCFW_ASSERT_RET(cli && argv, -1);
-
-    if ((cli->flags & JCFW_CLI_FLAGS_CMD_READY) == 0)
-    {
-        return -1;
-    }
+    JCFW_ERROR_IF_FALSE(cli, -1, "No CLI provided");
+    JCFW_ERROR_IF_FALSE(argv, -1, "No storage provided for arguments");
+    JCFW_RETURN_IF_FALSE(cli->flags & JCFW_CLI_FLAGS_CMD_READY, -1);
 
     int  pos       = 0;
     bool in_arg    = false;
@@ -445,14 +473,16 @@ int jcfw_cli_parse_args(jcfw_cli_t *cli, char ***argv)
 
 void jcfw_cli_print_prompt(const jcfw_cli_t *cli)
 {
-    JCFW_ASSERT_RET(cli);
+    JCFW_ERROR_IF_FALSE(cli, , "No CLI provided");
+    JCFW_RETURN_IF_FALSE(cli->prompt);
 
     _jcfw_cli_puts(cli, cli->prompt);
 }
 
 void jcfw_cli_printf(const jcfw_cli_t *cli, const char *format, ...)
 {
-    JCFW_ASSERT_RET(cli);
+    JCFW_ERROR_IF_FALSE(cli, , "No CLI provided");
+    JCFW_ERROR_IF_FALSE(format, , "No format provided");
 
     va_list args;
     va_start(args, format);
@@ -470,8 +500,13 @@ void jcfw_cli_printf(const jcfw_cli_t *cli, const char *format, ...)
 jcfw_cli_dispatch_result_e jcfw_cli_dispatch(
     jcfw_cli_t *cli, const jcfw_cli_cmd_spec_t *cmds, size_t num_cmds, int *o_exit_status)
 {
-    JCFW_ASSERT_RET(
-        cli && cmds && num_cmds && o_exit_status, JCFW_CLI_CMD_DISPATCH_RESULT_INVALID_ARG);
+    JCFW_ERROR_IF_FALSE(cli, JCFW_CLI_CMD_DISPATCH_RESULT_INVALID_ARGS, "No CLI provided");
+    JCFW_ERROR_IF_FALSE(
+        cmds && num_cmds, JCFW_CLI_CMD_DISPATCH_RESULT_INVALID_ARGS, "No commands provided");
+    JCFW_ERROR_IF_FALSE(
+        o_exit_status,
+        JCFW_CLI_CMD_DISPATCH_RESULT_INVALID_ARGS,
+        "No storage for the exit status provided");
 
     char **argv = NULL;
     int    argc = jcfw_cli_parse_args(cli, &argv);
@@ -486,10 +521,7 @@ jcfw_cli_dispatch_result_e jcfw_cli_dispatch(
 
     size_t                     cmd_depth = 0;
     const jcfw_cli_cmd_spec_t *cmd = _jcfw_cli_find_cmd(cmds, num_cmds, argc, argv, &cmd_depth);
-    if (!cmd || !cmd->handler)
-    {
-        return JCFW_CLI_CMD_DISPATCH_RESULT_CMD_NOT_FOUND;
-    }
+    JCFW_RETURN_IF_FALSE(cmd && cmd->handler, JCFW_CLI_CMD_DISPATCH_RESULT_CMD_NOT_FOUND);
 
     for (size_t i = cmd_depth; i < argc; i++)
     {
@@ -522,7 +554,7 @@ static bool _jcfw_cli_is_whitespace(char c)
 
 static void _jcfw_cli_reset(jcfw_cli_t *cli)
 {
-    JCFW_ASSERT_RET(cli);
+    JCFW_RETURN_IF_FALSE(cli);
 
     cli->buffer[0]   = '\0';
     cli->buffer_ptr  = 0;
@@ -538,7 +570,7 @@ static void _jcfw_cli_reset(jcfw_cli_t *cli)
 
 static void _jcfw_cli_handle_char_default(jcfw_cli_t *cli, char c)
 {
-    JCFW_ASSERT_RET(cli && cli->buffer_ptr < sizeof(cli->buffer) - 1);
+    JCFW_RETURN_IF_FALSE(cli->buffer_ptr < sizeof(cli->buffer) - 1);
 
     memmove(
         &cli->buffer[cli->cursor_pos + 1],
@@ -562,22 +594,22 @@ static void _jcfw_cli_handle_char_default(jcfw_cli_t *cli, char c)
     else
 #endif
     {
-        _jcfw_cli_puts(cli, &cli->buffer[cli->cursor_pos - 1]);
+        _jcfw_cli_internal_puts(cli, &cli->buffer[cli->cursor_pos - 1]);
         _jcfw_cli_term_cursor_back(cli, cli->buffer_ptr - cli->cursor_pos);
     }
 }
 
 static void _jcfw_cli_term_ansi(jcfw_cli_t *cli, size_t n, char code)
 {
-    JCFW_ASSERT_RET(cli);
+    JCFW_RETURN_IF_FALSE(cli);
 
     char buffer[5] = {'\x1b', '[', '0' + (n % 10), code, '\0'};
-    _jcfw_cli_puts(cli, buffer);
+    _jcfw_cli_internal_puts(cli, buffer);
 }
 
 static void _jcfw_cli_term_cursor_back(jcfw_cli_t *cli, size_t n)
 {
-    JCFW_ASSERT_RET(cli);
+    JCFW_RETURN_IF_FALSE(cli && cli->echo);
 
     while (n > 0)
     {
@@ -589,7 +621,7 @@ static void _jcfw_cli_term_cursor_back(jcfw_cli_t *cli, size_t n)
 
 static void _jcfw_cli_term_cursor_fwd(jcfw_cli_t *cli, size_t n)
 {
-    JCFW_ASSERT_RET(cli);
+    JCFW_RETURN_IF_FALSE(cli && cli->echo);
 
     while (n > 0)
     {
@@ -602,7 +634,7 @@ static void _jcfw_cli_term_cursor_fwd(jcfw_cli_t *cli, size_t n)
 #if JCFW_CLI_HISTORY_ENABLED
 static void _jcfw_cli_term_backspace(jcfw_cli_t *cli, size_t n)
 {
-    JCFW_ASSERT_RET(cli);
+    JCFW_RETURN_IF_FALSE(cli && cli->echo);
 
     while (n--)
     {
@@ -614,7 +646,7 @@ static void _jcfw_cli_term_backspace(jcfw_cli_t *cli, size_t n)
 #if JCFW_CLI_HISTORY_ENABLED
 static void _jcfw_cli_history_append(jcfw_cli_t *cli)
 {
-    JCFW_ASSERT_RET(cli);
+    JCFW_RETURN_IF_FALSE(cli);
 
     if (cli->buffer_ptr <= 0 || strcmp(cli->buffer, cli->history_buffer) == 0)
     {
@@ -634,7 +666,7 @@ static void _jcfw_cli_history_append(jcfw_cli_t *cli)
 #if JCFW_CLI_HISTORY_ENABLED
 static const char *_jcfw_cli_history_get(jcfw_cli_t *cli, ssize_t history_idx)
 {
-    JCFW_ASSERT_RET(cli, NULL);
+    JCFW_RETURN_IF_FALSE(cli, NULL);
 
     if (history_idx < 0)
     {
@@ -664,7 +696,7 @@ static const char *_jcfw_cli_history_get(jcfw_cli_t *cli, ssize_t history_idx)
 #if JCFW_CLI_HISTORY_ENABLED
 static const char *_jcfw_cli_history_find_substring(jcfw_cli_t *cli, const char *substr)
 {
-    JCFW_ASSERT_RET(cli, NULL);
+    JCFW_RETURN_IF_FALSE(cli, NULL);
 
     size_t i = 0;
     while (1)
@@ -688,7 +720,7 @@ static const char *_jcfw_cli_history_find_substring(jcfw_cli_t *cli, const char 
 #if JCFW_CLI_HISTORY_ENABLED
 static void _jcfw_cli_search_mode_start(jcfw_cli_t *cli)
 {
-    JCFW_ASSERT_RET(cli);
+    JCFW_RETURN_IF_FALSE(cli);
 
     _jcfw_cli_puts(cli, "\nsearch: ");
     cli->searching = true;
@@ -698,7 +730,7 @@ static void _jcfw_cli_search_mode_start(jcfw_cli_t *cli)
 #if JCFW_CLI_HISTORY_ENABLED
 static void _jcfw_cli_search_mode_stop(jcfw_cli_t *cli, bool print)
 {
-    JCFW_ASSERT_RET(cli);
+    JCFW_RETURN_IF_FALSE(cli);
 
     const char *result = _jcfw_cli_history_find_substring(cli, cli->buffer);
     if (result)
@@ -729,7 +761,7 @@ static void _jcfw_cli_search_mode_stop(jcfw_cli_t *cli, bool print)
 
 static void _jcfw_cli_putc(const jcfw_cli_t *cli, char c, bool flush)
 {
-    JCFW_ASSERT_RET(cli && cli->putc);
+    JCFW_RETURN_IF_FALSE(cli && cli->putc);
 
 #if JCFW_CLI_SERIAL_TERM_TRANSLATE
     if (c == '\n')
@@ -742,7 +774,7 @@ static void _jcfw_cli_putc(const jcfw_cli_t *cli, char c, bool flush)
 
 static void _jcfw_cli_puts(const jcfw_cli_t *cli, const char *s)
 {
-    JCFW_ASSERT_RET(cli && s);
+    JCFW_RETURN_IF_FALSE(cli && s);
 
     while (*s)
     {
@@ -754,7 +786,7 @@ static void _jcfw_cli_puts(const jcfw_cli_t *cli, const char *s)
 static const jcfw_cli_cmd_spec_t *_jcfw_cli_find_cmd(
     const jcfw_cli_cmd_spec_t *cmds, size_t num_cmds, int argc, char **argv, size_t *o_depth)
 {
-    JCFW_ASSERT_RET(cmds && num_cmds && argc && argv && o_depth, NULL);
+    JCFW_RETURN_IF_FALSE(cmds && num_cmds && argc && argv && o_depth, NULL);
 
     const jcfw_cli_cmd_spec_t *current_cmds     = cmds;
     size_t                     current_num_cmds = num_cmds;

@@ -62,6 +62,8 @@ typedef enum
 } jcfw_ltr303_measurement_rate_e;
 
 /// @brief Initialize the LTR303 driver.
+/// @note Be sure to wait until at least 100ms after power on to initialize the device (see:
+/// datasheet page 25/26)
 /// @param dev A pointer to the structure to initialize.
 /// @param i2c_arg Optional; The argument to be used by the I2C platform function for this device.
 /// @param i2c_timeout_ms The timeout to be used for I2C operations.
@@ -93,7 +95,7 @@ jcfw_result_e jcfw_ltr303_is_data_ready(jcfw_ltr303_t *dev, bool *o_is_data_read
 
 /// @brief Read the registers of the LTR303. So long as the I2C operation is successful, the
 /// registers will always be read, regardless of whether or not the data will be returned.
-/// @note To calculate visible light, subtract channel 1 from channel 0.
+/// @note To calculate visible light, subtract channel 1 from channel 0. Be sure to handle clamping.
 /// @param dev The device to read.
 /// @param o_channel0_lux Optional; The data in channel 0 (visible + IR).
 /// @param o_channel1_lux Optional; The data in channel 1 (IR only).
@@ -101,8 +103,9 @@ jcfw_result_e jcfw_ltr303_is_data_ready(jcfw_ltr303_t *dev, bool *o_is_data_read
 jcfw_result_e
 jcfw_ltr303_read(jcfw_ltr303_t *dev, uint16_t *o_channel0_lux, uint16_t *o_channel1_lux);
 
-/// @brief Enable or disable the interrupt of the LTR303. If enabling, the user should configure a
-/// GPIO interrupt to handle notifications from the device.
+/// @brief Enable or disable the interrupt of the LTR303.
+/// @note If enabling, the user should configure a GPIO interrupt to handle notifications from the
+/// device.
 /// @param dev The device to enable interrupts for.
 /// @param enable Whether or not interrupts should be enabled.
 /// @return JCFW_RESULT_OK if the operation is successful, or an error code otherwise.

@@ -29,7 +29,7 @@ typedef enum
 
     /// @brief The CLI API was provided with invalid arguments (this is an application error, not a
     /// user error)
-    JCFW_CLI_CMD_DISPATCH_RESULT_INVALID_ARG,
+    JCFW_CLI_CMD_DISPATCH_RESULT_INVALID_ARGS,
 
     /// @brief The CLI API has encountered an error internally.
     JCFW_CLI_CMD_DISPATCH_RESULT_CLI_ERROR,
@@ -57,6 +57,8 @@ struct jcfw_cli_s
     void           *putc_param;
 
     size_t csi_counter;
+
+    bool echo;
 
 #if JCFW_CLI_HISTORY_ENABLED
     char history_buffer[JCFW_CLI_HISTORY_BUFFER_SIZE];
@@ -86,12 +88,13 @@ struct jcfw_cli_cmd_spec_s
 
 /// @brief Initialize a CLI. This function should only be called once.
 /// @param cli The CLI structure to initialize.
-/// @param prompt The prompt to use for the CLI. Must be null-terminated.
-/// @param putc_func The function to use for output.
+/// @param prompt Optional; The prompt to use for the CLI. Must be null-terminated.
+/// @param putc_func Required; The function to use for output.
 /// @param putc_param Optional; A parameter to pass to the output function.
+/// @param echo True if the terminal should echo input, and false otherwise.
 /// @return JCFW_RESULT_OK if initalization is successful, or an error code otherwise.
-jcfw_result_e
-jcfw_cli_init(jcfw_cli_t *cli, const char *prompt, jcfw_cli_putc_f putc_func, void *putc_param);
+jcfw_result_e jcfw_cli_init(
+    jcfw_cli_t *cli, const char *prompt, jcfw_cli_putc_f putc_func, void *putc_param, bool echo);
 
 /// @brief Process a new character for the given CLI. This function should not be called from an
 /// interrupt handler.
