@@ -6,7 +6,7 @@ typedef enum
 {
     JCFW_RESULT_OK = 0x00000000,
     JCFW_RESULT_ERROR,
-    JCFW_RESULT_INVALID_ARG,
+    JCFW_RESULT_INVALID_ARGS,
 
     // System
     JCFW_RESULT_NOT_INITIALIZED = 0x00000100,
@@ -21,5 +21,7 @@ typedef enum
     JCFW_RESULT_FULL,
     JCFW_RESULT_OUT_OF_BOUNDS,
 } jcfw_result_e;
+
+// TODO(Caleb): Result check macro
 
 #endif // __JCFW_UTIL_RESULT_H__

@@ -50,15 +50,15 @@ static void _jcfw_cli_search_mode_stop(jcfw_cli_t *cli, bool print);
 static void _jcfw_cli_putc(const jcfw_cli_t *cli, char c, bool flush);
 static void _jcfw_cli_puts(const jcfw_cli_t *cli, const char *s);
 
-static jcfw_cli_cmd_spec_t *_jcfw_cli_find_cmd(
-    jcfw_cli_cmd_spec_t *cmds, size_t num_cmds, int argc, char **argv, size_t *o_depth);
+static const jcfw_cli_cmd_spec_t *_jcfw_cli_find_cmd(
+    const jcfw_cli_cmd_spec_t *cmds, size_t num_cmds, int argc, char **argv, size_t *o_depth);
 
 // -------------------------------------------------------------------------------------------------
 
 jcfw_result_e
 jcfw_cli_init(jcfw_cli_t *cli, const char *prompt, jcfw_cli_putc_f putc_func, void *putc_param)
 {
-    JCFW_ASSERT_RET(cli && prompt && putc_func, JCFW_RESULT_INVALID_ARG);
+    JCFW_ASSERT_RET(cli && prompt && putc_func, JCFW_RESULT_INVALID_ARGS);
 
     memset(cli, 0, sizeof(*cli));
     cli->putc       = putc_func;
@@ -467,8 +467,8 @@ void jcfw_cli_printf(const jcfw_cli_t *cli, const char *format, ...)
     _jcfw_cli_puts(cli, buffer);
 }
 
-jcfw_cli_cmd_dispatch_result_e jcfw_cli_dispatch_command(
-    jcfw_cli_t *cli, jcfw_cli_cmd_spec_t *cmds, size_t num_cmds, int *o_exit_status)
+jcfw_cli_dispatch_result_e jcfw_cli_dispatch(
+    jcfw_cli_t *cli, const jcfw_cli_cmd_spec_t *cmds, size_t num_cmds, int *o_exit_status)
 {
     JCFW_ASSERT_RET(
         cli && cmds && num_cmds && o_exit_status, JCFW_CLI_CMD_DISPATCH_RESULT_INVALID_ARG);
@@ -484,8 +484,8 @@ jcfw_cli_cmd_dispatch_result_e jcfw_cli_dispatch_command(
         return JCFW_CLI_CMD_DISPATCH_RESULT_NO_CMD;
     }
 
-    size_t               cmd_depth = 0;
-    jcfw_cli_cmd_spec_t *cmd       = _jcfw_cli_find_cmd(cmds, num_cmds, argc, argv, &cmd_depth);
+    size_t                     cmd_depth = 0;
+    const jcfw_cli_cmd_spec_t *cmd = _jcfw_cli_find_cmd(cmds, num_cmds, argc, argv, &cmd_depth);
     if (!cmd || !cmd->handler)
     {
         return JCFW_CLI_CMD_DISPATCH_RESULT_CMD_NOT_FOUND;
@@ -493,7 +493,7 @@ jcfw_cli_cmd_dispatch_result_e jcfw_cli_dispatch_command(
 
     for (size_t i = cmd_depth; i < argc; i++)
     {
-        if (strcmp(argv[i], "--help") == 0)
+        if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0)
         {
             if (cmd->usage)
             {
@@ -729,23 +729,20 @@ static void _jcfw_cli_search_mode_stop(jcfw_cli_t *cli, bool print)
 
 static void _jcfw_cli_putc(const jcfw_cli_t *cli, char c, bool flush)
 {
-    JCFW_ASSERT_RET(cli);
+    JCFW_ASSERT_RET(cli && cli->putc);
 
-    if (cli->putc)
-    {
 #if JCFW_CLI_SERIAL_TERM_TRANSLATE
-        if (c == '\n')
-        {
-            cli->putc(cli->putc_param, '\r', false);
-        }
-#endif
-        cli->putc(cli->putc_param, c, flush);
+    if (c == '\n')
+    {
+        cli->putc(cli->putc_param, '\r', false);
     }
+#endif
+    cli->putc(cli->putc_param, c, flush);
 }
 
 static void _jcfw_cli_puts(const jcfw_cli_t *cli, const char *s)
 {
-    JCFW_ASSERT_RET(cli);
+    JCFW_ASSERT_RET(cli && s);
 
     while (*s)
     {
@@ -754,19 +751,19 @@ static void _jcfw_cli_puts(const jcfw_cli_t *cli, const char *s)
     }
 }
 
-static jcfw_cli_cmd_spec_t *_jcfw_cli_find_cmd(
-    jcfw_cli_cmd_spec_t *cmds, size_t num_cmds, int argc, char **argv, size_t *o_depth)
+static const jcfw_cli_cmd_spec_t *_jcfw_cli_find_cmd(
+    const jcfw_cli_cmd_spec_t *cmds, size_t num_cmds, int argc, char **argv, size_t *o_depth)
 {
     JCFW_ASSERT_RET(cmds && num_cmds && argc && argv && o_depth, NULL);
 
-    jcfw_cli_cmd_spec_t *current_cmds     = cmds;
-    size_t               current_num_cmds = num_cmds;
-    jcfw_cli_cmd_spec_t *last_found_cmd   = NULL;
-    size_t               depth            = 0;
+    const jcfw_cli_cmd_spec_t *current_cmds     = cmds;
+    size_t                     current_num_cmds = num_cmds;
+    const jcfw_cli_cmd_spec_t *last_found_cmd   = NULL;
+    size_t                     depth            = 0;
 
     while (depth < argc)
     {
-        jcfw_cli_cmd_spec_t *found_cmd = NULL;
+        const jcfw_cli_cmd_spec_t *found_cmd = NULL;
 
         for (size_t i = 0; i < current_num_cmds; i++)
         {

@@ -1,87 +1,67 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
+#include "driver/uart.h"
 
 #include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 
 #include "jcfw/cli.h"
+#include "jcfw/driver/als/ltr303.h"
+#include "jcfw/trace.h"
 #include "jcfw/util/assert.h"
 #include "jcfw/util/math.h"
+
+#include "platform.h"
+#include "util.h"
+
+// -------------------------------------------------------------------------------------------------
 
 static jcfw_cli_t s_cli = {0};
 
 // -------------------------------------------------------------------------------------------------
 
-static int test(jcfw_cli_t *cli, int argc, char **argv)
+static int als(jcfw_cli_t *cli, int argc, char **argv)
 {
-    jcfw_cli_printf(cli, "It works!\n");
+    const char *USAGE_MESSAGE        = "usage: als <on|off>\n";
+    const char *ERROR_MESSAGE_FORMAT = "error: Unable to put the ALS in %s mode\n";
 
-    jcfw_cli_printf(cli, "\n%d args:\n", argc);
-    for (int i = 0; i < argc; i++)
+    if (argc != 2)
     {
-        jcfw_cli_printf(cli, "Arg %d/%d: '%s'\n", i + 1, argc, argv[i]);
+        jcfw_cli_printf(cli, USAGE_MESSAGE);
+        return EXIT_FAILURE;
     }
 
-    if (argc > 1 && strcmp(argv[1], "bad") == 0)
+    jcfw_result_e err = JCFW_RESULT_ERROR;
+
+    if (strncmp(argv[1], "on", 2) == 0)
     {
+        err = jcfw_ltr303_set_mode(&g_ltr303, JCFW_LTR303_MODE_ACTIVE);
+        if (err != JCFW_RESULT_OK)
+        {
+            jcfw_cli_printf(cli, ERROR_MESSAGE_FORMAT, "ACTIVE");
+            return EXIT_FAILURE;
+        }
+    }
+    else if (strncmp(argv[1], "off", 3) == 0)
+    {
+        err = jcfw_ltr303_set_mode(&g_ltr303, JCFW_LTR303_MODE_STANDBY);
+        if (err != JCFW_RESULT_OK)
+        {
+            jcfw_cli_printf(cli, ERROR_MESSAGE_FORMAT, "STANDBY");
+            return EXIT_FAILURE;
+        }
+    }
+    else
+    {
+        jcfw_cli_printf(cli, USAGE_MESSAGE);
         return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;
 }
 
-static int subtest(jcfw_cli_t *cli, int argc, char **argv)
-{
-    jcfw_cli_printf(cli, "Subcommand!\n");
-
-    return EXIT_SUCCESS;
-}
-
-static int subsubtest(jcfw_cli_t *cli, int argc, char **argv)
-{
-    jcfw_cli_printf(cli, "Subsubcommand!\n");
-
-    return EXIT_SUCCESS;
-}
-
-static int test2(jcfw_cli_t *cli, int argc, char **argv)
-{
-    jcfw_cli_printf(cli, "It works2!\n");
-
-    return EXIT_SUCCESS;
-}
-
-jcfw_cli_cmd_spec_t s_cmds[] = {
+const jcfw_cli_cmd_spec_t s_cmds[] = {
     {
-        .name        = "test",
-        .usage       = "usage: test [ARGS...]",
-        .handler     = test,
-        .num_subcmds = 1,
-        .subcmds =
-            (jcfw_cli_cmd_spec_t[]) {
-                {
-                    .name        = "subtest",
-                    .usage       = "usage: subtest [ARGS...]",
-                    .handler     = subtest,
-                    .num_subcmds = 1,
-                    .subcmds =
-                        (jcfw_cli_cmd_spec_t[]) {
-                            {
-                                .name        = "subsubtest",
-                                .usage       = "usage: subsubtest [ARGS...]",
-                                .handler     = subsubtest,
-                                .num_subcmds = 0,
-                                .subcmds     = NULL,
-                            },
-                        },
-                },
-            },
-    },
-    {
-        .name        = "test2",
-        .usage       = "usage: test2 [ARGS...]",
-        .handler     = test2,
+        .name        = "als",
+        .usage       = "usage: als <on|off>",
+        .handler     = als,
         .num_subcmds = 0,
         .subcmds     = NULL,
     },
@@ -89,23 +69,38 @@ jcfw_cli_cmd_spec_t s_cmds[] = {
 
 // -------------------------------------------------------------------------------------------------
 
-static void app_putchar(void *data, char ch, bool flush);
-
 void app_main(void)
 {
-    jcfw_cli_init(&s_cli, "home-cli $ ", app_putchar, stdout);
+    // uart_event_t uart_event;
+
+    JCFW_ASSERT(
+        jcfw_platform_init() == JCFW_RESULT_OK, "error: Unable to execute platform initialization");
+
+    jcfw_trace_init(util_putchar, NULL);
+    jcfw_trace_set_level(JCFW_TRACE_LEVEL_WARN);
+
+    JCFW_TRACELN_ERROR("MAIN", "Here's an error message!");
+    JCFW_TRACELN_WARN("MAIN", "Here's an warning message!");
+    JCFW_TRACELN("MAIN", "Here's an info message!");
+    JCFW_TRACELN_DEBUG("MAIN", "Here's a debug message!");
+    JCFW_TRACELN_NOTIFICATION("MAIN", "Here's a notification message!");
+
+    jcfw_cli_init(&s_cli, "home-cli $ ", util_putchar, NULL);
+    // JCFW_TRACELN_NOTIFICATION("MAIN", "CLI initialized!");
+    // JCFW_TRACEHEX_NOTIFICATION("MAIN", &s_cli, sizeof(s_cli), "CLI Contents");
+
     jcfw_cli_print_prompt(&s_cli);
 
     while (1)
     {
-        char c = getchar();
+        char c = getchar(); // NOTE(Caleb): Nonblocking, returns 0xFF if no input is received
 
         if (c != (char)EOF && jcfw_cli_process_char(&s_cli, c))
         {
             int exit_status = -1;
 
-            jcfw_cli_cmd_dispatch_result_e result =
-                jcfw_cli_dispatch_command(&s_cli, s_cmds, JCFW_ARRAYSIZE(s_cmds), &exit_status);
+            jcfw_cli_dispatch_result_e result =
+                jcfw_cli_dispatch(&s_cli, s_cmds, JCFW_ARRAYSIZE(s_cmds), &exit_status);
 
             switch (result)
             {
@@ -138,20 +133,17 @@ void app_main(void)
             jcfw_cli_print_prompt(&s_cli);
         }
 
+        if (g_is_als_data_ready)
+        {
+            uint16_t      ch0 = 0x0000;
+            uint16_t      ch1 = 0x0000;
+            jcfw_result_e err = jcfw_ltr303_read(&g_ltr303, &ch0, &ch1);
+            JCFW_ASSERT(err == JCFW_RESULT_OK, "Unable to read ALS data");
+
+            JCFW_TRACE("MAIN", "ALS DATA: %d lux\n", JCFW_CLAMP(ch0 - ch1, 0x0000, 0xFFFF));
+            g_is_als_data_ready = false;
+        }
+
         vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
-}
-
-static void app_putchar(void *data, char c, bool flush)
-{
-    JCFW_ASSERT_RET(data);
-
-    FILE *f = data;
-
-    fputc(c, f);
-
-    if (flush)
-    {
-        fflush(f);
     }
 }
