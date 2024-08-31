@@ -6,6 +6,7 @@
 
 #include "jcfw/platform/platform.h"
 #include "jcfw/util/assert.h"
+#include "jcfw/util/math.h"
 
 // TODO(Caleb): Do I need to lock this module?
 
@@ -13,6 +14,7 @@
 
 static jcfw_platform_putchar_f s_putchar     = NULL;
 static void                   *s_putchar_arg = NULL;
+static jcfw_trace_level_e      s_level       = JCFW_TRACE_LEVEL_DEBUG;
 
 // -------------------------------------------------------------------------------------------------
 
@@ -27,16 +29,27 @@ void jcfw_trace_init(jcfw_platform_putchar_f putchar_func, void *putchar_arg)
     s_putchar_arg = putchar_arg;
 }
 
+void jcfw_trace_set_level(jcfw_trace_level_e level)
+{
+    s_level = JCFW_CLAMP(level, JCFW_TRACE_LEVEL_DEBUG, JCFW_TRACE_LEVEL_NOTIFICATION);
+}
+
 void _jcfw_trace_generic(
-    const char *tag,
-    const char *file,
-    int         line,
-    const char *color,
-    const char *prefix,
-    const char *postfix,
-    const char *format,
+    const char        *tag,
+    jcfw_trace_level_e level,
+    const char        *file,
+    int                line,
+    const char        *color,
+    const char        *prefix,
+    const char        *postfix,
+    const char        *format,
     ...)
 {
+    if (level < s_level)
+    {
+        return;
+    }
+
     if (!jcfw_platform_trace_validate(tag))
     {
         return;
@@ -63,16 +76,22 @@ void _jcfw_trace_generic(
 }
 
 void _jcfw_tracehex_generic(
-    const char *tag,
-    const char *file,
-    int         line,
-    const char *color,
-    const char *prefix,
-    const void *data,
-    size_t      size,
-    const char *user_prefix)
+    const char        *tag,
+    jcfw_trace_level_e level,
+    const char        *file,
+    int                line,
+    const char        *color,
+    const char        *prefix,
+    const void        *data,
+    size_t             size,
+    const char        *user_prefix)
 {
     JCFW_ASSERT_RET(tag && data && size);
+
+    if (level < s_level)
+    {
+        return;
+    }
 
     if (!jcfw_platform_trace_validate(tag))
     {

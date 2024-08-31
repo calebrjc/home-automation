@@ -135,7 +135,8 @@ jcfw_result_e jcfw_ltr303_is_data_ready(jcfw_ltr303_t *dev, bool *o_is_data_read
     return JCFW_RESULT_OK;
 }
 
-jcfw_result_e jcfw_ltr303_read(jcfw_ltr303_t *dev, uint16_t *o_channel0, uint16_t *o_channel1)
+jcfw_result_e
+jcfw_ltr303_read(jcfw_ltr303_t *dev, uint16_t *o_channel0_lux, uint16_t *o_channel1_lux)
 {
     JCFW_ASSERT_RET(dev, JCFW_RESULT_INVALID_ARGS);
 
@@ -148,14 +149,14 @@ jcfw_result_e jcfw_ltr303_read(jcfw_ltr303_t *dev, uint16_t *o_channel0, uint16_
         dev->i2c_arg, &reg, 1, (uint8_t *)data, 4, dev->i2c_timeout_ms);
     JCFW_ASSERT_RET(err == JCFW_RESULT_OK, err);
 
-    if (o_channel0)
+    if (o_channel0_lux)
     {
-        *o_channel0 = data[1];
+        *o_channel0_lux = data[1];
     }
 
-    if (o_channel1)
+    if (o_channel1_lux)
     {
-        *o_channel1 = data[0];
+        *o_channel1_lux = data[0];
     }
 
     return JCFW_RESULT_OK;

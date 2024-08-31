@@ -77,6 +77,7 @@ void app_main(void)
         jcfw_platform_init() == JCFW_RESULT_OK, "error: Unable to execute platform initialization");
 
     jcfw_trace_init(util_putchar, NULL);
+    jcfw_trace_set_level(JCFW_TRACE_LEVEL_WARN);
 
     JCFW_TRACELN_ERROR("MAIN", "Here's an error message!");
     JCFW_TRACELN_WARN("MAIN", "Here's an warning message!");
