@@ -68,15 +68,20 @@ jcfw_result_e jcfw_platform_init(void)
 
     jcfw_platform_delay_ms(100); // NOTE(Caleb): See LTR303 docs
     jcfw_err = jcfw_ltr303_init(&g_ltr303, s_als_i2c_handle, -1);
-    JCFW_ASSERT_RET(jcfw_err == JCFW_RESULT_OK, JCFW_RESULT_ERROR);
+
+    JCFW_ERROR_IF_FALSE(
+        jcfw_err == JCFW_RESULT_OK,
+        JCFW_RESULT_ERROR,
+        "Unable to initialize the LTR303 (rc %u)",
+        jcfw_err);
 
     uint16_t thresh_low  = 0x0000;
     uint16_t thresh_high = 0x0000;
     jcfw_err             = jcfw_ltr303_set_thresholds(&g_ltr303, &thresh_low, &thresh_high);
-    JCFW_ASSERT(jcfw_err == JCFW_RESULT_OK, "Unable to set thresholds");
+    JCFW_ASSERT(jcfw_err == JCFW_RESULT_OK, "Unable to set LTR303 thresholds");
 
     jcfw_err = jcfw_ltr303_enable_interrupt(&g_ltr303, true);
-    JCFW_ASSERT(jcfw_err == JCFW_RESULT_OK, "Unable to enable interrupts");
+    JCFW_ASSERT(jcfw_err == JCFW_RESULT_OK, "Unable to enable LTR303 interrupts");
 
     // CLI UART ----------------------------------------------------------------
 
@@ -115,6 +120,11 @@ void jcfw_platform_on_assert(const char *file, int line, const char *format, ...
     vprintf(format, args);
     va_end(args);
 
+    abort();
+}
+
+void jcfw_platform_crash(void)
+{
     abort();
 }
 

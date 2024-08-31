@@ -45,17 +45,9 @@ void _jcfw_trace_generic(
     const char        *format,
     ...)
 {
-    if (level < s_level)
-    {
-        return;
-    }
+    JCFW_RETURN_IF_FALSE(level >= s_level && jcfw_platform_trace_validate(tag));
 
-    if (!jcfw_platform_trace_validate(tag))
-    {
-        return;
-    }
-
-    _jcfw_trace_printf("%s[%s] %s - ", color, prefix, tag);
+    _jcfw_trace_printf("%s%s [%s] ", color, prefix, tag);
 
     if (file)
     {
@@ -86,21 +78,12 @@ void _jcfw_tracehex_generic(
     size_t             size,
     const char        *user_prefix)
 {
-    JCFW_ASSERT_RET(tag && data && size);
-
-    if (level < s_level)
-    {
-        return;
-    }
-
-    if (!jcfw_platform_trace_validate(tag))
-    {
-        return;
-    }
+    JCFW_RETURN_IF_FALSE(tag && data && size);
+    JCFW_RETURN_IF_FALSE(level >= s_level && jcfw_platform_trace_validate(tag));
 
     for (size_t i = 0; i < size; i += 16)
     {
-        _jcfw_trace_printf("%s[%s] %s - ", color, prefix, tag);
+        _jcfw_trace_printf("%s%s [%s] ", color, prefix, tag);
 
         if (file)
         {
@@ -147,7 +130,7 @@ void _jcfw_tracehex_generic(
 
 static void _jcfw_trace_puts(const char *s)
 {
-    JCFW_ASSERT_RET(s && s_putchar);
+    JCFW_RETURN_IF_FALSE(s && s_putchar);
 
     while (*s)
     {
@@ -158,6 +141,8 @@ static void _jcfw_trace_puts(const char *s)
 
 static void _jcfw_trace_printf(const char *format, ...)
 {
+    JCFW_RETURN_IF_FALSE(format);
+  
     va_list args;
     va_start(args, format);
 

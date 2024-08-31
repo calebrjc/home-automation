@@ -23,6 +23,10 @@ jcfw_result_e jcfw_platform_init(void);
 /// @param ... The arguments for the message format.
 void jcfw_platform_on_assert(const char *file, int line, const char *format, ...);
 
+/// @brief Force the system to crash with a message. This function must be implemented to use the
+/// JCFW_ASSERT or JCWF_CRASH macros. (see: jcfw/assert.h)
+void jcfw_platform_crash(void);
+
 /// @brief Gvien a tag, return true if a trace with the tag should be output, and false otherwise.
 /// @param tag The tag to evaluate.
 /// @return True if a trace with the tag should be output, and false otherwise.

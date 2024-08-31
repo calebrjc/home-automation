@@ -71,13 +71,10 @@ const jcfw_cli_cmd_spec_t s_cmds[] = {
 
 void app_main(void)
 {
-    // uart_event_t uart_event;
-
     JCFW_ASSERT(
         jcfw_platform_init() == JCFW_RESULT_OK, "error: Unable to execute platform initialization");
 
     jcfw_trace_init(util_putchar, NULL);
-    jcfw_trace_set_level(JCFW_TRACE_LEVEL_WARN);
 
     JCFW_TRACELN_ERROR("MAIN", "Here's an error message!");
     JCFW_TRACELN_WARN("MAIN", "Here's an warning message!");
@@ -85,9 +82,7 @@ void app_main(void)
     JCFW_TRACELN_DEBUG("MAIN", "Here's a debug message!");
     JCFW_TRACELN_NOTIFICATION("MAIN", "Here's a notification message!");
 
-    jcfw_cli_init(&s_cli, "home-cli $ ", util_putchar, NULL);
-    // JCFW_TRACELN_NOTIFICATION("MAIN", "CLI initialized!");
-    // JCFW_TRACEHEX_NOTIFICATION("MAIN", &s_cli, sizeof(s_cli), "CLI Contents");
+    jcfw_cli_init(&s_cli, "home-cli $ ", util_putchar, NULL, true);
 
     jcfw_cli_print_prompt(&s_cli);
 
@@ -105,13 +100,14 @@ void app_main(void)
             switch (result)
             {
                 case JCFW_CLI_CMD_DISPATCH_RESULT_NO_CMD:
+                    jcfw_cli_printf(&s_cli, "\n");
                     break;
 
                 case JCFW_CLI_CMD_DISPATCH_RESULT_CMD_NOT_FOUND:
                     jcfw_cli_printf(&s_cli, "\n> ERROR, Command not found\n\n");
                     break;
 
-                case JCFW_CLI_CMD_DISPATCH_RESULT_INVALID_ARG:
+                case JCFW_CLI_CMD_DISPATCH_RESULT_INVALID_ARGS:
                     jcfw_cli_printf(&s_cli, "\n> ERROR, Implementation error\n\n");
                     break;
 
