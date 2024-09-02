@@ -236,7 +236,7 @@ static int wifi_scan(jcfw_cli_t *cli, int argc, char **argv)
 {
     if (argc != 1)
     {
-        jcfw_cli_printf(cli, "usage: wifi status");
+        jcfw_cli_printf(cli, "usage: wifi scan");
         return EXIT_FAILURE;
     }
 
@@ -273,13 +273,12 @@ static int wifi_scan(jcfw_cli_t *cli, int argc, char **argv)
         max_ssid_len,
         "SSID",
         "RSSI (dBm)",
-        "PRIMARY_CHANNEL",
-        "SECONDARY_CHANNEL");
+        "CHANNEL");
 
     for (size_t i = 0; i < num_aps; i++)
     {
         jcfw_cli_printf(
-            cli, "%-*.33s %10d %15d\n", max_ssid_len, aps[i].ssid, aps[i].rssi_dBm, aps[i].channel);
+            cli, "%-*.33s %10d %7d\n", max_ssid_len, aps[i].ssid, aps[i].rssi_dBm, aps[i].channel);
     }
 
     return EXIT_SUCCESS;

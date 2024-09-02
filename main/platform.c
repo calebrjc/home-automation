@@ -92,7 +92,7 @@ jcfw_result_e jcfw_platform_init(void)
     jcfw_err = jcfw_ltr303_enable_interrupt(&g_ltr303, true);
     JCFW_ASSERT(jcfw_err == JCFW_RESULT_OK, "Unable to enable LTR303 interrupts");
 
-    jcfw_err = jcfw_ltr303_set_gain(&g_ltr303, JCFW_LTR303_GAIN_96X);
+    jcfw_err = jcfw_ltr303_set_gain(&g_ltr303, JCFW_LTR303_GAIN_8X);
     JCFW_ASSERT(jcfw_err == JCFW_RESULT_OK, "Unable to set LTR303 gain");
 
     // CLI UART ----------------------------------------------------------------

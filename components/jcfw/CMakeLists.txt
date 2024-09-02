@@ -2,8 +2,7 @@ set(JCFW_SRCS
     src/cli.c
     src/trace.c
     src/driver/als/ltr303.c
-    src/platform/esp32/wifi.c
-    src/util/string.c)
+    src/platform/esp32/wifi.c)
 
 idf_component_register(
     SRCS
