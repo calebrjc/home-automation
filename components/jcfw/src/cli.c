@@ -519,10 +519,16 @@ jcfw_cli_dispatch_result_e jcfw_cli_dispatch(
         return JCFW_CLI_CMD_DISPATCH_RESULT_NO_CMD;
     }
 
+    // JCFW_TRACELN_DEBUG("JCFW-CLI", "argc = %d", argc);
+    // JCFW_TRACELN_DEBUG("JCFW-CLI", "argv:");
+    // for (int i = 0; i < argc; i++)
+    // {
+    //     JCFW_TRACELN_DEBUG("JCFW-CLI", "[%d] = %s", i, argv[i]);
+    // }
+
     size_t                     cmd_depth = 0;
     const jcfw_cli_cmd_spec_t *cmd = _jcfw_cli_find_cmd(cmds, num_cmds, argc, argv, &cmd_depth);
     JCFW_RETURN_IF_FALSE(cmd && cmd->handler, JCFW_CLI_CMD_DISPATCH_RESULT_CMD_NOT_FOUND);
-
 
     for (size_t i = cmd_depth; i < argc; i++)
     {
@@ -541,6 +547,14 @@ jcfw_cli_dispatch_result_e jcfw_cli_dispatch(
             return JCFW_CLI_CMD_DISPATCH_RESULT_OK;
         }
     }
+
+    // JCFW_TRACELN_DEBUG("JCFW-CLI", "cmd_depth = %zu", cmd_depth);
+    // JCFW_TRACELN_DEBUG("JCFW-CLI", "passed argc = %d", argc - cmd_depth);
+    // JCFW_TRACELN_DEBUG("JCFW-CLI", "passed argv:");
+    // for (int i = 0; i < argc - cmd_depth; i++)
+    // {
+    //     JCFW_TRACELN_DEBUG("JCFW-CLI", "[%d] = %s", i, (argv + cmd_depth)[i]);
+    // }
 
     *o_exit_status = cmd->handler(cli, argc - cmd_depth, argv + cmd_depth);
     return JCFW_CLI_CMD_DISPATCH_RESULT_OK;

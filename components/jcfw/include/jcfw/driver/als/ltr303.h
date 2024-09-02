@@ -29,12 +29,12 @@ typedef enum
 typedef enum
 {
     JCFW_LTR303_GAIN_DEFAULT = 0x00,
-    JCFW_LTR303_GAIN_1X      = 0x00,
-    JCFW_LTR303_GAIN_2X      = 0x01,
-    JCFW_LTR303_GAIN_4X      = 0x02,
-    JCFW_LTR303_GAIN_8X      = 0x03,
-    JCFW_LTR303_GAIN_48X     = 0x06,
-    JCFW_LTR303_GAIN_96X     = 0x07,
+    JCFW_LTR303_GAIN_1X      = 0x00, // 1     lux - 64k  lux
+    JCFW_LTR303_GAIN_2X      = 0x01, // 0.5   lux - 32k  lux
+    JCFW_LTR303_GAIN_4X      = 0x02, // 0.25  lux - 16k  lux
+    JCFW_LTR303_GAIN_8X      = 0x03, // 0.125 lux - 8k   lux
+    JCFW_LTR303_GAIN_48X     = 0x06, // 0.02  lux - 1.3k lux
+    JCFW_LTR303_GAIN_96X     = 0x07, // 0.01  lux - 600  lux
 } jcfw_ltr303_gain_e;
 
 typedef enum
@@ -96,12 +96,15 @@ jcfw_result_e jcfw_ltr303_is_data_ready(jcfw_ltr303_t *dev, bool *o_is_data_read
 /// @brief Read the registers of the LTR303. So long as the I2C operation is successful, the
 /// registers will always be read, regardless of whether or not the data will be returned.
 /// @note To calculate visible light, subtract channel 1 from channel 0. Be sure to handle clamping.
+/// @note Setting `o_gain_factor == NULL` saves an I2C transaction, but you will be in charge of
+/// handling the gain calculation.
 /// @param dev The device to read.
 /// @param o_channel0_lux Optional; The data in channel 0 (visible + IR).
 /// @param o_channel1_lux Optional; The data in channel 1 (IR only).
+/// @param o_gain_factor Optional; The factor to divide readings by to calculate the reading in lux.
 /// @return JCFW_RESULT_OK if the operation is successful, or an error code otherwise.
-jcfw_result_e
-jcfw_ltr303_read(jcfw_ltr303_t *dev, uint16_t *o_channel0_lux, uint16_t *o_channel1_lux);
+jcfw_result_e jcfw_ltr303_read(
+    jcfw_ltr303_t *dev, uint16_t *o_channel0_lux, uint16_t *o_channel1_lux, uint8_t *o_gain_factor);
 
 /// @brief Enable or disable the interrupt of the LTR303.
 /// @note If enabling, the user should configure a GPIO interrupt to handle notifications from the

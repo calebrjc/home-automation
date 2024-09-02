@@ -19,7 +19,7 @@
 /// @note Think about the condition as an assert condition.
 /// @param _cond The condition to check.
 /// @param ... Optional; The value to return if the condition is false.
-#define JCFW_RETURN_IF_FALSE(_cond, ...)
+#define JCFW_RETURN_IF_FALSE(_cond, ...)                                                           \
     do                                                                                             \
     {                                                                                              \
         if (JCFW_UNLIKELY(!(_cond)))                                                               \
