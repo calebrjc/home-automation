@@ -23,6 +23,15 @@ typedef enum
     JCFW_LTR303_REG_ALS_INTERRUPT_PERSIST = 0x9E,
 } jcfw_ltr303_register_e;
 
+static uint8_t S_GAIN_FACTORS[] = {
+    [JCFW_LTR303_GAIN_1X]  = 1,
+    [JCFW_LTR303_GAIN_2X]  = 2,
+    [JCFW_LTR303_GAIN_4X]  = 4,
+    [JCFW_LTR303_GAIN_8X]  = 8,
+    [JCFW_LTR303_GAIN_48X] = 48,
+    [JCFW_LTR303_GAIN_96X] = 96,
+};
+
 jcfw_result_e jcfw_ltr303_init(jcfw_ltr303_t *dev, void *i2c_arg, uint32_t i2c_timeout_ms)
 {
     JCFW_ERROR_IF_FALSE(dev, JCFW_RESULT_INVALID_ARGS, "No device provided");
@@ -139,17 +148,34 @@ jcfw_result_e jcfw_ltr303_is_data_ready(jcfw_ltr303_t *dev, bool *o_is_data_read
     return JCFW_RESULT_OK;
 }
 
-jcfw_result_e
-jcfw_ltr303_read(jcfw_ltr303_t *dev, uint16_t *o_channel0_lux, uint16_t *o_channel1_lux)
+jcfw_result_e jcfw_ltr303_read(
+    jcfw_ltr303_t *dev, uint16_t *o_channel0_lux, uint16_t *o_channel1_lux, uint8_t *o_gain_factor)
 {
     JCFW_ERROR_IF_FALSE(dev, JCFW_RESULT_INVALID_ARGS, "No device provided");
 
     // TODO(Caleb): May have to add a byteswap to make this function endianness-independent
 
-    uint8_t  reg    = JCFW_LTR303_REG_ALS_DATA_CH1_0;
+    jcfw_result_e err;
+    uint8_t       reg;
+
+    if (o_gain_factor)
+    {
+        reg            = JCFW_LTR303_REG_ALS_STATUS;
+        uint8_t status = 0x00;
+
+        jcfw_result_e err =
+            jcfw_platform_i2c_mstr_mem_read(dev->i2c_arg, &reg, 1, &status, 1, dev->i2c_timeout_ms);
+        JCFW_ERROR_IF_FALSE(
+            err == JCFW_RESULT_OK, err, "I2C read operation failed (jcfw rc %u)", err);
+
+        jcfw_ltr303_gain_e gain = (status >> 4) & 0x07; // See datasheet page 21
+        *o_gain_factor          = S_GAIN_FACTORS[gain];
+    }
+
+    reg             = JCFW_LTR303_REG_ALS_DATA_CH1_0;
     uint16_t data[] = {0x0000, 0x0000};
 
-    jcfw_result_e err = jcfw_platform_i2c_mstr_mem_read(
+    err = jcfw_platform_i2c_mstr_mem_read(
         dev->i2c_arg, &reg, 1, (uint8_t *)data, 4, dev->i2c_timeout_ms);
     JCFW_ERROR_IF_FALSE(err == JCFW_RESULT_OK, err, "I2C read operation failed (jcfw rc %u)", err);
 

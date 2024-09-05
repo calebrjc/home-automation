@@ -1,4 +1,5 @@
 set(SOURCES
+    cli.c
     main.c
     platform.c
     util.c)

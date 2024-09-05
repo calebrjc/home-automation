@@ -6,6 +6,7 @@
 #include "driver/i2c_master.h"
 #include "driver/uart.h"
 #include "freertos/FreeRTOS.h"
+#include "nvs_flash.h"
 
 #include "jcfw/driver/als/ltr303.h"
 #include "jcfw/util/assert.h"
@@ -33,11 +34,19 @@ static void on_als_data_ready(void *arg);
 jcfw_result_e jcfw_platform_init(void)
 {
     jcfw_result_e jcfw_err;
-    // esp_err_t     esp_err;
+    esp_err_t     esp_err;
 
     gpio_config_t       gpio_cfg    = {0};
     i2c_device_config_t i2c_dev_cfg = {0};
     // uart_config_t       uart_cfg    = {0};
+
+    esp_err = nvs_flash_init();
+    if (esp_err == ESP_ERR_NVS_NO_FREE_PAGES || esp_err == ESP_ERR_NVS_NEW_VERSION_FOUND)
+    {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        esp_err = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(esp_err);
 
     i2c_master_bus_config_t i2c_bus_cfg = {
         .clk_source                   = I2C_CLK_SRC_DEFAULT,
@@ -82,6 +91,9 @@ jcfw_result_e jcfw_platform_init(void)
 
     jcfw_err = jcfw_ltr303_enable_interrupt(&g_ltr303, true);
     JCFW_ASSERT(jcfw_err == JCFW_RESULT_OK, "Unable to enable LTR303 interrupts");
+
+    jcfw_err = jcfw_ltr303_set_gain(&g_ltr303, JCFW_LTR303_GAIN_8X);
+    JCFW_ASSERT(jcfw_err == JCFW_RESULT_OK, "Unable to set LTR303 gain");
 
     // CLI UART ----------------------------------------------------------------
 
