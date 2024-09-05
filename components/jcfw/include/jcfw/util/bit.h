@@ -4,11 +4,13 @@
 #define JCFW_LITTLE_ENDIAN 1234
 #define JCFW_BIG_ENDIAN    4321
 
+#include "jcfw/detail/common.h"
+
 #if __has_include("endian.h")
 #include <endian.h>
 #else
 #ifndef JCFW_BYTE_ORDER
-#error "No endian.h found. Please #define JCFW_BYTE_ORDER as JCFW_LITTLE_ENDIAN or JFCW_BIG_ENDIAN"
+#error No endian.h found. Please #define JCFW_BYTE_ORDER as JCFW_LITTLE_ENDIAN or JFCW_BIG_ENDIAN
 #else // _BYTE_ORDER
 #include <stdint.h>
 
@@ -49,5 +51,33 @@ static inline uint32_t __bswap32(uint32_t x)
 #define JCFW_NTOHS(_v)         __ntohs(_v)
 #define JCFW_HTONL(_v)         __htonl(_v)
 #define JCFW_NTOHL(_v)         __ntohl(_v)
+
+static inline void _jcfw_itob(void *dest, uint32_t src, size_t size)
+{
+    for (size_t i = 0; i < size; i++)
+    {
+        ((uint8_t *)dest)[i] = (src >> (i * 8)) & 0xFF;
+    }
+}
+
+#define JCFW_ITOB16(_dest, _src) _jcfw_itob((_dest), (_src), sizeof(uint16_t))
+#define JCFW_ITOB32(_dest, _src) _jcfw_itob((_dest), (_src), sizeof(uint32_t))
+
+#if !defined(_BYTE_ORDER) && !defined(JCFW_BYTE_ORDER)
+#error No byte order specified. Please include endian.h in the build or define JCFW_BYTE_ORDER as JCFW_LITTLE_ENDIAN or JFCW_BIG_ENDIAN
+#else
+#if (defined(_BYTE_ORDER) && _BYTE_ORDER == _LITTLE_ENDIAN)                                        \
+    || (defined(JCFW_BYTE_ORDER) && JCFW_BYTE_ORDER == JCFW_LITTLE_ENDIAN)
+#define JCFW_ITOB16_BE(_dest, _src) JCFW_ITOB16(_dest, JCFW_BSWAP16(_src))
+#define JCFW_ITOB32_BE(_dest, _src) JCFW_ITOB32(_dest, JCFW_BSWAP32(_src))
+#define JCFW_ITOB16_LE(_dest, _src) JCFW_ITOB16(_dest, _src)
+#define JCFW_ITOB32_LE(_dest, _src) JCFW_ITOB32(_dest, _src)
+#else
+#define JCFW_ITOB16_BE(_dest, _src) JCFW_ITOB16(_dest, _src)
+#define JCFW_ITOB32_BE(_dest, _src) JCFW_ITOB32(_dest, _src)
+#define JCFW_ITOB16_LE(_dest, _src) JCFW_ITOB16(_dest, JCFW_BSWAP16(_src))
+#define JCFW_ITOB32_LE(_dest, _src) JCFW_ITOB32(_dest, JCFW_BSWAP32(_src))
+#endif
+#endif
 
 #endif //  __JCFW_UTIL_BIT_H__

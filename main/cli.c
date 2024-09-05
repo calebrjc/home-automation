@@ -341,29 +341,29 @@ void cli_run(void *arg)
             jcfw_cli_print_prompt(&s_cli);
         }
 
-        if (g_is_als_data_ready)
-        {
-            uint16_t      ch0         = 0x0000;
-            uint16_t      ch1         = 0x0000;
-            uint8_t       gain_factor = 0;
-            jcfw_result_e err         = jcfw_ltr303_read(&g_ltr303, &ch0, &ch1, &gain_factor);
-            if (err != JCFW_RESULT_OK)
-            {
-                jcfw_cli_printf(&s_cli, "error: Unable to read ALS data\n");
-            }
-            else if (gain_factor == 0)
-            {
-                jcfw_cli_printf(&s_cli, "error: Invalid gain read\n");
-            }
-            else
-            {
-                float visible_light = JCFW_CLAMP((float)(ch0 - ch1), 0, 64000) / gain_factor;
+        // if (g_is_als_data_ready)
+        // {
+        //     uint16_t      ch0         = 0x0000;
+        //     uint16_t      ch1         = 0x0000;
+        //     uint8_t       gain_factor = 0;
+        //     jcfw_result_e err         = jcfw_ltr303_read(&g_ltr303, &ch0, &ch1, &gain_factor);
+        //     if (err != JCFW_RESULT_OK)
+        //     {
+        //         jcfw_cli_printf(&s_cli, "error: Unable to read ALS data\n");
+        //     }
+        //     else if (gain_factor == 0)
+        //     {
+        //         jcfw_cli_printf(&s_cli, "error: Invalid gain read\n");
+        //     }
+        //     else
+        //     {
+        //         float visible_light = JCFW_CLAMP((float)(ch0 - ch1), 0, 64000) / gain_factor;
 
-                jcfw_cli_printf(&s_cli, "ALS DATA: %f lux\n", visible_light);
-            }
+        //         jcfw_cli_printf(&s_cli, "ALS DATA: %f lux\n", visible_light);
+        //     }
 
-            g_is_als_data_ready = false;
-        }
+        //     g_is_als_data_ready = false;
+        // }
 
         vTaskDelay(pdMS_TO_TICKS(10));
     }

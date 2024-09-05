@@ -33,59 +33,75 @@ void app_main(void)
     JCFW_ASSERT(err == JCFW_RESULT_OK, "error: Unable to execute platform initialization");
 
     jcfw_trace_init(util_putchar, NULL);
+    JCFW_TRACELN_ERROR("MAIN", "Here's an error message!");
+    JCFW_TRACELN_WARN("MAIN", "Here's an warning message!");
+    JCFW_TRACELN("MAIN", "Here's an info message!");
+    JCFW_TRACELN_DEBUG("MAIN", "Here's a debug message!");
+    JCFW_TRACELN_NOTIFICATION("MAIN", "Here's a notification message!");
 
     err = jcfw_wifi_init();
     JCFW_ASSERT(err == JCFW_RESULT_OK, "Unable to initialize WIFI");
     JCFW_TRACELN_INFO(TRACE_TAG, "WIFI has been initialized");
 
-    err = jcfw_wifi_sta_connect("*****", "*****");
+    err = jcfw_wifi_sta_connect("**********", "**********");
     JCFW_ASSERT(err == JCFW_RESULT_OK, "Unable to connect to the network");
     JCFW_TRACELN_INFO(TRACE_TAG, "WIFI has been connected");
 
-    bool cli_inited = cli_init();
-    JCFW_ASSERT(cli_inited, "Unable to initialize the CLI task");
-    xTaskCreate(cli_run, "APP-CLI", 4096, NULL, tskIDLE_PRIORITY + 5, NULL);
+    JCFW_ASSERT(cli_init(), "error: Unable to initialize the CLI task");
+    JCFW_ASSERT(
+        xTaskCreate(cli_run, "APP-CLI", 4096, NULL, tskIDLE_PRIORITY + 5, NULL),
+        "error: Unable to start the CLI task");
 
     // -------------------------------------------------------------------------
 
     ip_address_t server_addr = {0};
     const char  *MSG_FORMAT  = "{\"als\": %f}";
 
-    int sock = create_socket("10.0.0.141", "5000", &server_addr, 3);
+    int sock = create_socket("***.***.***.***", "5000", &server_addr, 3);
     JCFW_ASSERT(sock >= 0, "Unable to create the client socket");
 
     err = jcfw_ltr303_set_mode(&g_ltr303, JCFW_LTR303_MODE_ACTIVE);
-    JCFW_ASSERT(sock >= 0, "Unable to start the LTR303");
+    JCFW_ASSERT(sock >= 0, "error: Unable to start the LTR303");
 
     while (1)
     {
-        uint16_t      ch0         = 0x0000;
-        uint16_t      ch1         = 0x0000;
-        uint8_t       gain_factor = 0;
-        jcfw_result_e err         = jcfw_ltr303_read(&g_ltr303, &ch0, &ch1, &gain_factor);
-        if (err != JCFW_RESULT_OK || gain_factor == 0)
+        if (g_is_als_data_ready)
         {
-            vTaskDelay(pdMS_TO_TICKS(1000));
-            continue;
-        }
-        else
-        {
-            float visible_light = JCFW_CLAMP((float)(ch0 - ch1), 0, 64000) / gain_factor;
+            uint16_t      ch0         = 0x0000;
+            uint16_t      ch1         = 0x0000;
+            uint8_t       gain_factor = 0;
+            jcfw_result_e err         = jcfw_ltr303_read(&g_ltr303, &ch0, &ch1, &gain_factor);
+            if (err != JCFW_RESULT_OK)
+            {
+                JCFW_TRACE_ERROR(TRACE_TAG, "error: Unable to read ALS data\n");
+            }
+            else if (gain_factor == 0)
+            {
+                JCFW_TRACE_ERROR(TRACE_TAG, "error: Invalid gain read\n");
+            }
+            else
+            {
+                float visible_light = JCFW_CLAMP((float)(ch0 - ch1), 0, 64000) / gain_factor;
+                JCFW_TRACE_DEBUG(TRACE_TAG, "ALS DATA: %f lux\n", visible_light);
 
-            char data[32] = {0};
-            snprintf(data, 32, MSG_FORMAT, visible_light);
-            uint8_t bytes_sent = sendto(
-                sock,
-                data,
-                strnlen(data, 32),
-                0,
-                (struct sockaddr *)&server_addr.data,
-                server_addr.len);
-            JCFW_ASSERT(bytes_sent > 0, "Unable to send data to the server");
+                char data[32] = {0};
+                snprintf(data, 32, MSG_FORMAT, visible_light);
+                uint8_t bytes_sent = sendto(
+                    sock,
+                    data,
+                    strnlen(data, 32),
+                    0,
+                    (struct sockaddr *)&server_addr.data,
+                    server_addr.len);
+                JCFW_ASSERT(bytes_sent > 0, "Unable to send data to the server");
+
+                JCFW_TRACELN_INFO(TRACE_TAG, "Sent packet to server");
+            }
+
+            g_is_als_data_ready = false;
         }
 
-        JCFW_TRACELN_INFO(TRACE_TAG, "Sent packet to server");
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
@@ -102,11 +118,8 @@ int create_socket(
     hints.ai_family   = AF_INET;
     hints.ai_socktype = SOCK_DGRAM;
 
-    if ((rv = getaddrinfo(addr, port, &hints, &servinfo)) != 0)
-    {
-        JCFW_TRACELN_ERROR(TRACE_TAG, "getaddrinfo failed; rv %d\n", rv);
-        return -1;
-    }
+    rv = getaddrinfo(addr, port, &hints, &servinfo);
+    JCFW_ERROR_IF_FALSE(rv == 0, -1, "getaddrinfo failed; rv %d", rv);
 
     // Loop through all the results and make a socket
     for (p = servinfo; p != NULL; p = p->ai_next)
@@ -120,18 +133,18 @@ int create_socket(
         break;
     }
 
-    if (p == NULL)
-    {
-        JCFW_TRACELN_ERROR(TRACE_TAG, "error: Failed to create a socket\n");
-        return -1;
-    }
+    JCFW_ERROR_IF_FALSE(p != NULL, -1, "error: Failed to create a socket");
 
     if (timeout_sec)
     {
         struct timeval timeout;
         timeout.tv_sec  = timeout_sec;
         timeout.tv_usec = 0;
-        setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof timeout);
+        JCFW_ERROR_IF_TRUE(
+            setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof timeout) < 0,
+            -1,
+            "error: Unable to set a timeout for the socket; errno %d",
+            errno);
     }
 
     memcpy(&o_remote_addr->data, p->ai_addr, p->ai_addrlen);
